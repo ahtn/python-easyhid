@@ -75,8 +75,6 @@ class HIDException(Exception):
 
 class Device:
     def __init__(self, cdata):
-        """
-        """
         if cdata == ffi.NULL:
             raise TypeError
         self.path = _c_to_py_str(cdata.path)
@@ -173,7 +171,7 @@ class Device:
         hidapi.hid_set_nonblocking(self._device, enable_nonblocking)
 
     def is_open(self):
-        return _is_open
+        return self._is_open
 
     def is_connected(self):
         """
@@ -282,6 +280,7 @@ class Enumeration:
         self.device_list = _hid_enumerate(vid, pid)
 
     def show(self):
+        """ Print the device description of each device in the Enumeration """
         for dev in self.device_list:
             print(dev.description())
 
@@ -289,19 +288,30 @@ class Enumeration:
             path=None, release_number=None, manufacturer=None,
             product=None, usage=None, usage_page=None):
         """
-        Attempts to open a device in the HID enumeration list. This function
-        is only away of devices that were present when the object was created.
+        Attempts to open a device in this `Enumeration` object. Optional
+        arguments can be provided to filter the resulting list based on various
+        parameters of the HID devices.
+
+        Args:
+            vid: filters by USB Vendor ID
+            pid: filters by USB Product ID
+            serial: filters by USB serial string (.iSerialNumber)
+            interface: filters by interface number (bInterfaceNumber)
+            release_number: filters by the USB release number (.bcdDevice)
+            manufacturer: filters by USB manufacturer string (.iManufacturer)
+            product: filters by USB product string (.iProduct)
+            usage: filters by HID usage
+            usage_page: filters by HID usage_page
+            path: filters by HID API path.
         """
         result = []
 
         for dev in self.device_list:
-            if vid and dev.vendor_id != vid:
+            if vid not in [0, None] and dev.vendor_id != vid:
                 continue
-            if pid and dev.product_id != pid:
+            if pid not in [0, None] and dev.product_id != pid:
                 continue
             if serial and dev.serial_number != serial:
-                continue
-            if interface and dev.interface_number != interface:
                 continue
             if path and dev.path != path:
                 continue
@@ -309,11 +319,13 @@ class Enumeration:
                 continue
             if product and dev.product_string != product:
                 continue
-            if release_number and dev.release_number != release_number:
+            if release_number != None and dev.release_number != release_number:
                 continue
-            if usage and dev.usage != usage:
+            if interface != None and dev.interface_number != interface:
                 continue
-            if usage_page and dev.usage_page != usage_page:
+            if usage != None and dev.usage != usage:
+                continue
+            if usage_page != None and dev.usage_page != usage_page:
                 continue
             result.append(dev)
         return result
@@ -359,7 +371,7 @@ if __name__ == "__main__":
     # Examples
     from easyhid import Enumeration
 
-    # Stores an enumertion of all the connected USB HID devices
+    # Stores an enumeration of all the connected USB HID devices
     en = Enumeration()
 
     # return a list of devices based on the search parameters
