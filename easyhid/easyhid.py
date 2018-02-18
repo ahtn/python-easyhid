@@ -73,7 +73,7 @@ def _c_to_py_str(val):
 class HIDException(Exception):
     pass
 
-class Device:
+class HIDDevice:
     def __init__(self, cdata):
         if cdata == ffi.NULL:
             raise TypeError
@@ -102,7 +102,7 @@ class Device:
 
     def open(self):
         if self._is_open:
-            raise HIDException("Failed to open device: Device already open")
+            raise HIDException("Failed to open device: HIDDevice already open")
 
         path = self.path.encode('utf-8')
         dev = hidapi.hid_open_path(path)
@@ -131,7 +131,7 @@ class Device:
         """
 
         if not self._is_open:
-            raise HIDException("Device not open")
+            raise HIDException("HIDDevice not open")
 
         write_data = bytearray([report_id]) + bytearray(data)
         cdata = ffi.new("const unsigned char[]", bytes(write_data))
@@ -149,7 +149,7 @@ class Device:
         """
 
         if not self._is_open:
-            raise HIDException("Device not open")
+            raise HIDException("HIDDevice not open")
 
         data = [0] * size
         cdata = ffi.new("unsigned char[]", data)
@@ -170,7 +170,7 @@ class Device:
 
     def set_nonblocking(self, enable_nonblocking):
         if not self._is_open:
-            raise HIDException("Device not open")
+            raise HIDException("HIDDevice not open")
 
         if type(enable_nonblocking) != bool:
             raise TypeError
@@ -263,7 +263,7 @@ class Device:
 
     def description(self):
         return \
-"""Device:
+"""HIDDevice:
     {} | {:x}:{:x} | {} | {} | {}
     release_number: {}
     usage_page: {}
@@ -339,9 +339,9 @@ class Enumeration:
 
 def _hid_enumerate(vendor_id=0, product_id=0):
     """
-    Enumerates all the hid devices for VID:PID. Returns a list of `DeviceInfo`.
-    If vid is 0, then match any vendor id. Similarly, if pid is 0, match any
-    product id. If both are zero, enumerate all HID devices.
+    Enumerates all the hid devices for VID:PID. Returns a list of `HIDDevice`
+    objects.  If vid is 0, then match any vendor id. Similarly, if pid is 0,
+    match any product id. If both are zero, enumerate all HID devices.
     """
     start = hidapi.hid_enumerate(vendor_id, product_id)
     result = []
@@ -350,7 +350,7 @@ def _hid_enumerate(vendor_id=0, product_id=0):
 
     # Copy everything into python list
     while cur != ffi.NULL:
-        result.append(Device(cur))
+        result.append(HIDDevice(cur))
         cur = cur.next
 
     # Free the C memory
@@ -369,7 +369,7 @@ def _hid_enumerate(vendor_id=0, product_id=0):
 #         serial = ffi.new("wchar_t[]", serial)
 #     dev = hidapi.hid_open(vendor_id, product_id, serial)
 #     if dev:
-#         return Device(dev)
+#         return HIDDevice(dev)
 #     else:
 #         None
 
