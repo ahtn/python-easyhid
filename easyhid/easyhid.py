@@ -94,6 +94,12 @@ class Device:
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        self.open()
+
+    def __exit__(self, err_type, err_value, traceback):
+        self.close()
+
     def open(self):
         if self._is_open:
             raise HIDException("Failed to open device: Device already open")

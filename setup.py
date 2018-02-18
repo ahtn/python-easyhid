@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
     name = 'easyhid',
-    version = '0.0.1',
+    version = '0.0.2',
     description = "A simple interface to the HIDAPI library.",
     url = "http://github.com/ahtn/python-easyhid",
     author = "jem",
