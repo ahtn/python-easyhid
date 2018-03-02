@@ -4,10 +4,20 @@
 # Licensed under the MIT license (http://opensource.org/licenses/MIT)
 
 from setuptools import setup
+import os
+
+# Load the version number
+try: # python3
+    fields = {}
+    with open(os.path.join("easyhid", "version.py")) as f:
+        exec(f.read(), fields)
+    __version__ = fields['__version__']
+except: # python2
+    execfile(os.path.join("easyhid", "version.py"))
 
 setup(
     name = 'easyhid',
-    version = '0.0.3',
+    version = __version__,
     description = "A simple interface to the HIDAPI library.",
     url = "http://github.com/ahtn/python-easyhid",
     author = "jem",
