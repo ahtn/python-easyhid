@@ -75,7 +75,13 @@ def _c_to_py_str(val):
 class HIDException(Exception):
     pass
 
-class HIDDevice:
+class HIDDevice(object):
+    """
+    A HID device for communication with a HID interface.
+
+    Should normally be created through an Enumeration object.
+    """
+
     def __init__(self, cdata):
         if cdata == ffi.NULL:
             raise TypeError
@@ -103,6 +109,9 @@ class HIDDevice:
         self.close()
 
     def open(self):
+        """
+        Open the HID device for reading and writing.
+        """
         if self._is_open:
             raise HIDException("Failed to open device: HIDDevice already open")
 
@@ -124,19 +133,23 @@ class HIDDevice:
             self._is_open = False
             hidapi.hid_close(self._device)
 
-    def description(self):
-        return self.info.description()
-
     def write(self, data, report_id=0):
         """
-        Writes `bytes` to the hid device.
+        Writes data to the HID device on its endpoint.
+
+        Parameters:
+            data: data to send on the HID endpoint
+            report_id: the report ID to use.
+
+        Returns:
+            The number of bytes written including the report ID.
         """
 
         if not self._is_open:
             raise HIDException("HIDDevice not open")
 
-        write_data = bytearray([report_id]) + bytearray(data)
-        cdata = ffi.new("const unsigned char[]", bytes(write_data))
+        write_data = bytes([report_id]) + bytes(data)
+        cdata = ffi.new("const unsigned char[]", write_data)
         num_written = hidapi.hid_write(self._device, cdata, len(write_data))
         if num_written < 0:
             raise HIDException("Failed to write to HID device: " + str(num_written))
@@ -145,9 +158,16 @@ class HIDDevice:
 
     def read(self, size=64, timeout=None):
         """
-        Read from the hid device. Returns bytes read or None if no bytes read.
-        size: number of bytes to read
-        timeout: length to wait in milliseconds
+        Read from the hid device on its endpoint.
+
+
+        Parameters:
+            size: number of bytes to read
+            timeout: length to wait in milliseconds
+
+        Returns:
+            The HID report read from the device. The first byte in the result
+            will be the report ID if used.
         """
 
         if not self._is_open:
@@ -166,7 +186,7 @@ class HIDDevice:
         if bytes_read < 0:
             raise HIDException("Failed to read from HID device: " + str(bytes_read))
         elif bytes_read == 0:
-            return None
+            return []
         else:
             return bytearray(cdata)
 
@@ -179,6 +199,7 @@ class HIDDevice:
         hidapi.hid_set_nonblocking(self._device, enable_nonblocking)
 
     def is_open(self):
+        """Check if the HID device is open"""
         return self._is_open
 
     def is_connected(self):
@@ -198,19 +219,58 @@ class HIDDevice:
             else:
                 return True
 
-# int hid_send_feature_report (hid_device *device, const unsigned char *data, size_t length);
-    # def send_feature_report(self, data):
-    #     cdata = ffi.new("const unsigned char[]", data)
-    #     hidapi.hid_send_feature_report(self._device, cdata, length)
-    #     pass
+    def send_feature_report(self, data, report_id=0x00):
+        """
+        Send a Feature report to a HID device.
 
-    # def get_feature_report(self, size=64):
-    #     hid_data = bytes([report_id]) + bytes(data)
-    #     cdata = ffi.new("unsigned char[]", data)
-    #     hidapi.hid_send_feature_report(self._device, cdata, length)
-    #     pass
+        Feature reports are sent over the Control endpoint as a Set_Report
+        transfer.
+
+        Parameters:
+            data    The data to send
+
+        Returns:
+            This function returns the actual number of bytes written
+        """
+        if not self._is_open:
+            raise HIDException("HIDDevice not open")
+
+        report = bytes([report_id]) + bytes(data)
+        cdata = ffi.new("const unsigned char[]", report)
+        bytes_read = hidapi.hid_send_feature_report(self._device, cdata, len(report))
+
+        if bytes_read == -1:
+            raise HIDException("Failed to send feature report to HID device")
+
+        return bytes_read
+
+    def get_feature_report(self, size=64, report_id=0x00):
+        """
+        Get a feature report from a HID device.
+
+        Feature reports are sent over the Control endpoint as a Get_Report
+        transfer.
+
+        Parameters:
+            size        The number of bytes to read.
+            report_id   The report id to read
+
+        Returns:
+            They bytes read from the HID report
+        """
+        cdata = ffi.new("unsigned char[{}]".format(size+1))
+        cdata[0] = report_id
+        bytes_read = hidapi.hid_get_feature_report(self._device, cdata, size+1)
+
+        if bytes_read == -1:
+            raise HIDException("Failed to get feature report from HID device")
+
+        return bytearray(cdata[1:size+1])
 
     def get_error(self):
+        """
+        Get an error string from the device
+        """
         err_str = hidapi.hid_error(self._device)
         if err_str == ffi.NULL:
             return None
@@ -264,6 +324,9 @@ class HIDDevice:
 
 
     def description(self):
+        """
+        Get a string describing the HID descriptor.
+        """
         return \
 """HIDDevice:
     {} | {:x}:{:x} | {} | {} | {}
@@ -283,12 +346,18 @@ class HIDDevice:
            self.interface_number
         )
 
-class Enumeration:
+class Enumeration(object):
     def __init__(self, vid=0, pid=0):
+        """
+        Create a USB HID enumeration. The enumeration is a list of all the HID
+        interfaces connected at the time the object was created.
+        """
         self.device_list = _hid_enumerate(vid, pid)
 
     def show(self):
-        """ Print the device description of each device in the Enumeration """
+        """
+        Print the device description of each device in the Enumeration
+        """
         for dev in self.device_list:
             print(dev.description())
 
