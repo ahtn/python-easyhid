@@ -24,6 +24,7 @@ struct hid_device_info {
     int interface_number;
     struct hid_device_info *next;
 };
+
 typedef struct hid_device_ hid_device;
 
 int hid_init(void);
@@ -148,8 +149,8 @@ class HIDDevice(object):
         if not self._is_open:
             raise HIDException("HIDDevice not open")
 
-        write_data = bytes([report_id]) + bytes(data)
-        cdata = ffi.new("const unsigned char[]", write_data)
+        write_data = bytearray([report_id]) + bytearray(data)
+        cdata = ffi.new("const unsigned char[]", bytes(write_data))
         num_written = hidapi.hid_write(self._device, cdata, len(write_data))
         if num_written < 0:
             raise HIDException("Failed to write to HID device: " + str(num_written))
@@ -235,8 +236,8 @@ class HIDDevice(object):
         if not self._is_open:
             raise HIDException("HIDDevice not open")
 
-        report = bytes([report_id]) + bytes(data)
-        cdata = ffi.new("const unsigned char[]", report)
+        report = bytearray([report_id]) + bytearray(data)
+        cdata = ffi.new("const unsigned char[]", bytes(report))
         bytes_read = hidapi.hid_send_feature_report(self._device, cdata, len(report))
 
         if bytes_read == -1:
@@ -429,20 +430,6 @@ def _hid_enumerate(vendor_id=0, product_id=0):
 
     return result
 
-# def hid_open(vendor_id, product_id, serial=None):
-#     """
-#     """
-#     if serial == None:
-#         serial = ffi.NULL
-#     else:
-#         if type(serial) == bytes or type(serial) == bytearray:
-#             serial = serial.decode('utf-8')
-#         serial = ffi.new("wchar_t[]", serial)
-#     dev = hidapi.hid_open(vendor_id, product_id, serial)
-#     if dev:
-#         return HIDDevice(dev)
-#     else:
-#         None
 
 if __name__ == "__main__":
     # Examples
