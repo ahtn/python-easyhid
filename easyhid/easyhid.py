@@ -238,14 +238,14 @@ class HIDDevice(object):
 
         report = bytearray([report_id]) + bytearray(data)
         cdata = ffi.new("const unsigned char[]", bytes(report))
-        bytes_read = hidapi.hid_send_feature_report(self._device, cdata, len(report))
+        bytes_written = hidapi.hid_send_feature_report(self._device, cdata, len(report))
 
-        if bytes_read == -1:
+        if bytes_written == -1:
             raise HIDException("Failed to send feature report to HID device")
 
-        return bytes_read
+        return bytes_written
 
-    def get_feature_report(self, size=64, report_id=0x00):
+    def get_feature_report(self, size, report_id=0x00):
         """
         Get a feature report from a HID device.
 
@@ -259,9 +259,11 @@ class HIDDevice(object):
         Returns:
             They bytes read from the HID report
         """
-        cdata = ffi.new("unsigned char[{}]".format(size+1))
+        data = [0] * (size+1)
+        cdata = ffi.new("unsigned char[]", bytes(data))
         cdata[0] = report_id
-        bytes_read = hidapi.hid_get_feature_report(self._device, cdata, size+1)
+
+        bytes_read = hidapi.hid_get_feature_report(self._device, cdata, len(cdata))
 
         if bytes_read == -1:
             raise HIDException("Failed to get feature report from HID device")
