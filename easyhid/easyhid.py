@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import cffi
 import ctypes.util
 import platform
+import sys
 
 ffi = cffi.FFI()
 ffi.cdef("""
@@ -59,9 +60,16 @@ elif "Darwin" in platform.platform():
         hidapi = ffi.dlopen(ctypes.util.find_library('hidapi'))
 else:
     try:
-        hidapi = ffi.dlopen('hidapi-libusb')
+        hidapi = ffi.dlopen('hidapi-hidraw')
     except:
-        hidapi = ffi.dlopen(ctypes.util.find_library('hidapi-libusb'))
+        libname = ctypes.util.find_library('hidapi-hidraw')
+
+        if sys.version_info < (3, 6) and libname == None:
+            # Couldn't find lib, use hardcode value so AppImage works.
+            # Not need in >= 3.6 since ctypes.util.find_library will also
+            # check LD_LIBRARY_PATH in newer versions of python.
+            libname = 'libhidapi-hidraw.so.0'
+        hidapi = ffi.dlopen(libname)
 
 def _c_to_py_str(val):
     if val == ffi.NULL:
@@ -176,7 +184,7 @@ class HIDDevice(object):
 
         data = [0] * size
         cdata = ffi.new("unsigned char[]", data)
-        bytes_read = 0
+        bytes_read = None
 
         if timeout == None:
             bytes_read = hidapi.hid_read(self._device, cdata, len(cdata))
@@ -187,7 +195,7 @@ class HIDDevice(object):
         if bytes_read < 0:
             raise HIDException("Failed to read from HID device: " + str(bytes_read))
         elif bytes_read == 0:
-            return []
+            return bytearray([])
         else:
             return bytearray(cdata)
 
